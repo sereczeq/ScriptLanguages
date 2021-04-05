@@ -1,10 +1,7 @@
 import logging
 import os
-import string
-from enum import Enum, auto
+from enum import Enum
 import json
-import jsonschema
-from jsonschema import validate
 
 
 class ConfigReader:
@@ -12,42 +9,50 @@ class ConfigReader:
         """Breaks creating of config file and uses old one"""
         pass
 
-    class Request(Enum):
-        GET = 1
-        HEAD = 2
-        POST = 3
-        PUT = 4
-        DELETE = 5
-        CONNECT = 6
-        OPTIONS = 7
-        TRACE = 8
-        PATCH = 9
+    class Enums:
+        class Request(Enum):
+            GET = 1
+            HEAD = 2
+            POST = 3
+            PUT = 4
+            DELETE = 5
+            CONNECT = 6
+            OPTIONS = 7
+            TRACE = 8
+            PATCH = 9
 
-    class LoggingLevel(Enum):
-        CRITICAL = 50
-        ERROR = 40
-        WARNING = 30
-        INFO = 20
-        DEBUG = 10
-        NOTSET = 0
+        class LoggingLevel(Enum):
+            CRITICAL = 50
+            ERROR = 40
+            WARNING = 30
+            INFO = 20
+            DEBUG = 10
+            NOTSET = 0
 
-    class ActionOnBadConfig(Enum):
-        RETRY = 1
-        QUIT = 2
-        USE_OLD = 3
+        class ActionOnBadConfig(Enum):
+            RETRY = 1
+            QUIT = 2
+            USE_OLD = 3
 
-    configuration = dict()
     _JSON_file_name = "json.txt"
 
+    def __init__(self):
+        self.configuration = dict()
+        self.create_config()
+
     def create_config(self) -> dict:
-        self.configuration["action on bad config"] = self.get_enum(self.ActionOnBadConfig, "What to do on bad input?")
+        self.configuration["action on bad config"] = self.get_enum(self.Enums.ActionOnBadConfig,
+                                                                   "What to do on bad input?")
         try:
             self.configuration["name of webserver log"] = input("What is the name of web server log?: ")
-            self.configuration["requests"] = self.get_enum(self.Request,
-                                                           "What type of HTTP requests to read (one or more separated by spaces)?",
+            self.configuration["requests"] = self.get_enum(self.Enums.Request,
+                                                           "What type of HTTP requests to read (one or more separated "
+                                                           "by spaces)?",
                                                            True)
-            self.configuration["logging level"] = self.get_enum(self.LoggingLevel, "What the logging level should be?")
-            self.configuration["number of lines"] = self.get_int("How many lines should be displayed?")
+            self.configuration["logging level"] = self.get_enum(self.Enums.LoggingLevel,
+                                                                "What the logging level should be?")
+            self.configuration["number of lines"] = self.get_int("How many lines should be displayed (0 means all)?")
+
             with open(self._JSON_file_name, "w") as write:
                 json.dump(self.configuration, write)
         except self.UseOldException:
@@ -83,104 +88,159 @@ class ConfigReader:
     # If user gives wrong value program quits, uses old config file *, or retries
     def handle_exception(self):
         if "action on bad config" not in self.configuration:
-            action = self.ActionOnBadConfig.RETRY
+            action = self.Enums.ActionOnBadConfig.RETRY
         else:
-            action = self.ActionOnBadConfig[self.configuration["action on bad config"]]
+            action = self.Enums.ActionOnBadConfig[self.configuration["action on bad config"]]
         print("WRONG INPUT")
-        if action == self.ActionOnBadConfig.QUIT:
+        if action == self.Enums.ActionOnBadConfig.QUIT:
             print("QUITTING")
             quit(1)
         # * To use old file, method throws an exception which is caught by "add_config", to inform it to use old file
-        elif action == self.ActionOnBadConfig.USE_OLD:
+        elif action == self.Enums.ActionOnBadConfig.USE_OLD:
             raise self.UseOldException
         print('RETRY')
 
     def read_old(self):
         print("USING OLD CONFIG")
-        with open(self._JSON_file_name, "r") as json_file:
-            self.configuration = json.load(json_file)
+        try:
+            with open(self._JSON_file_name, "r") as json_file:
+                self.configuration = json.load(json_file)
+        except json.JSONDecodeError as e:
+            print("CONFIGURATION FILE NOT A JSON")
+            print(e)
+            print("TERMINATING PROGRAM")
+            quit(1)
         return self.configuration
 
 
 class LogReader:
+    class LogReaderException(Exception):
+        pass
 
-    def __init__(self, configuration):
-        self.configuration = configuration
-        if not self.check_config():
-            print("wrong config")
+    class WrongConfigSignature(LogReaderException):
+        pass
+
+    class WrongAction(LogReaderException):
+        pass
+
+    class LogFileNotExisting(LogReaderException):
+        pass
+
+    class WrongRequestType(LogReaderException):
+        pass
+
+    class WrongLoggingLevel(LogReaderException):
+        pass
+
+    class NotAnInteger(LogReaderException):
+        pass
+
+    data: dict[str, list[dict[str]]] = dict([])
+
+    def __init__(self, path):
+        try:
+            with open(path, "r") as json_file:
+                self.configuration = json.load(json_file)
+                self.check_config()
+        except self.LogReaderException as e:
+            print("WRONG CONFIGURATION FILE")
+            print(e)
+            quit(1)
+        except json.JSONDecodeError as e:
+            print("CONFIGURATION FILE NOT A JSON")
+            print(e.msg)
+            print("TERMINATING PROGRAM")
+            quit(1)
         self.logging_setup()
+        self.read_log()
 
     def check_config(self):
-        config_schema = {"type": "object",
-                         "properties": {
-                             "action on bad config": {"type": "string"}
-                         },
-                         "required": ["action on bad config"],
-                         "type": "object",
-                         "properties": {
-                             "name of webserver log": {"type": "string"}
-                         },
-                         "required": ["name of webserver log"],
-                         "type": "array",
-                         "properties": {
-                             "requests": {
-                                 "items": {
-                                     "type": "string",
-                                     "enum": [enum.value for enum in ConfigReader.Request]},
-                             }
-                         },
-                         "required": ["requests"],
-                         "type": "object",
-                         "properties": {
-                             "logging level": {
-                                 "type": "string",
-                                 "enum": [enum.value for enum in ConfigReader.Request]},
-                         },
-                         "required": ["logging level"],
-                         "type": "object",
-                         "properties": {"number of lines": {"type": "number"}
-                                        },
-                         "required": ["number of lines", "requests"],
+        if not ("action on bad config" in self.configuration and
+                "name of webserver log" in self.configuration and
+                "requests" in self.configuration and
+                "logging level" in self.configuration and
+                "number of lines" in self.configuration):
+            raise self.WrongConfigSignature("Config file not containing proper attributes")
 
-                         }
-        try:
-            validate(instance=self.configuration, schema=config_schema)
-            print("correct")
-        except jsonschema.exceptions.ValidationError as err:
-            print("error")
-            print(err)
-            return False
-        return True
+        if self.configuration["action on bad config"] not in ConfigReader.Enums.ActionOnBadConfig.__members__:
+            raise self.WrongAction(f"\"{self.configuration['action on bad config']}\" is not proper action")
+
+        if not os.path.exists(self.configuration["name of webserver log"]):
+            raise self.LogFileNotExisting(f"file \"{self.configuration['name of webserver log']}\" does not exits")
+
+        for elem in self.configuration["requests"]:
+            if elem not in ConfigReader.Enums.Request.__members__:
+                raise self.WrongAction(f"\"{elem}\" is not proper html request type")
+
+        if not self.configuration["logging level"] in ConfigReader.Enums.LoggingLevel.__members__:
+            raise self.WrongLoggingLevel(f"\"{self.configuration['logging level']}\" is not proper logging level")
+
+        if type(self.configuration["number of lines"]) is not int:
+            raise self.NotAnInteger(f"number of lines should be a number but it's not: "
+                                    f"{self.configuration['number of lines']}")
 
     def logging_setup(self):
         format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
         logging.basicConfig(level=self.configuration["logging level"], format=format_log)
 
     def read_log(self):
-        data = dict[str, list[dict()]]()
         with open(self.configuration["name of webserver log"]) as file:
             for line in file:
                 words = line.split()
                 entry = {
                     "ip": str(words[0]),
                     "date": words[3][1:-1],
-                    "request": str(words[5:7]),
+                    "request": {"type": words[5][1:],
+                                "resource": words[6],
+                                "html thingy": words[7][:-1]},
                     "response code": words[8]
                 }
-                # TODO: requests is a list
-                if entry["request"].upper() == self.configuration["requests"].upper():
-                    if entry["ip"] in data:
-                        data[entry["ip"]].append(entry)
+                if entry["ip"] in self.data:
+                    self.data[entry["ip"]].append(entry)
+                else:
+                    self.data[entry["ip"]] = [entry]
+        return self.data
+
+    def print_index_html(self):
+        data = dict()
+        for key, array in self.data.items():
+            for entry in array:
+                # Check if resource contains "index"
+                if "index" in entry["request"]["resource"]:
+                    # Format the data to print it properly in "display"
+                    to_print = {"request": {"type": entry["request"]["type"], "resource": entry["request"]["resource"]}}
+                    if key not in data:
+                        data[key] = [to_print]
                     else:
-                        data[entry["ip"]] = [entry]
-        return data
+                        data[key].append(to_print)
+        self.display(data)
+
+    # For filtering the displayed data and displaying set amount of data at a time.
+    def display(self, data: dict):
+        counter = 0
+        for array in data.values():
+            for entry in array:
+                # Loop for checking for request types
+                for request in self.configuration["requests"]:
+                    if request in entry["request"]["type"]:
+                        # If for displaying only set amount of entries at a time
+                        # If configured number is <= 0 display all uninterruptedly
+
+                        if counter == self.configuration["number of lines"] and counter != 0:
+                            counter = 0
+                            # User can choose to stop displaying by typing "no"
+                            if input("Do you want to continue? [Enter / no]").upper() == "NO":
+                                return
+                        counter += 1
+                        print(entry)
 
 
 def run():
-    reader = ConfigReader()
-    configuration = reader.read_old()
-    print(configuration)
-    reader = LogReader(configuration)
+    # reader = ConfigReader()
+    # configuration = reader.create_config()
+    reader = LogReader("json.txt")
+    reader.print_index_html()
+    # reader.display(reader.data)
 
 
 if __name__ == "__main__":
