@@ -151,7 +151,7 @@ class LogReader:
             print(e.msg)
             print("TERMINATING PROGRAM")
             quit(1)
-        self.logging_setup()
+        self.logging_setup(ready=True)
         self.read_log()
 
     def check_config(self):
@@ -179,13 +179,18 @@ class LogReader:
             raise self.NotAnInteger(f"number of lines should be a number but it's not: "
                                     f"{self.configuration['number of lines']}")
 
-    def logging_setup(self):
+    def logging_setup(self, ready=False):
         format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
-        logging.basicConfig(level=self.configuration["logging level"], format=format_log)
+        logging.basicConfig(level=ConfigReader.Enums.LoggingLevel[self.configuration["logging level"]].value if ready else logging.DEBUG, format=format_log)
+        logging.debug(f'Logging level set to {ConfigReader.Enums.LoggingLevel[self.configuration["logging level"]].value if ready else logging.DEBUG}')
 
     def read_log(self):
+        logging.debug(f'Opening {self.configuration["name of webserver log"]}...')
         with open(self.configuration["name of webserver log"]) as file:
+            logging.debug(f'{self.configuration["name of webserver log"]} opened successfully')
+            line_count = 0
             for line in file:
+                line_count += 1
                 words = line.split()
                 entry = {
                     "ip": str(words[0]),
@@ -199,40 +204,56 @@ class LogReader:
                     self.data[entry["ip"]].append(entry)
                 else:
                     self.data[entry["ip"]] = [entry]
+            logging.info(f'Read {len(self.data.keys())} ip addresses containing total of {line_count} requests')
         return self.data
 
     def print_index_html(self):
         data = dict()
+        logging_matches_index = 0
         for key, array in self.data.items():
             for entry in array:
                 # Check if resource contains "index"
                 if "index" in entry["request"]["resource"]:
+                    logging_matches_index += 1
                     # Format the data to print it properly in "display"
                     to_print = {"request": {"type": entry["request"]["type"], "resource": entry["request"]["resource"]}}
                     if key not in data:
                         data[key] = [to_print]
                     else:
                         data[key].append(to_print)
+        logging.info(f'Found {logging_matches_index} matches')
         self.display(data)
 
     # For filtering the displayed data and displaying set amount of data at a time.
     def display(self, data: dict):
+        logging.info(f'Displaying all requests containing any of: {self.configuration["requests"]}, showing {self.configuration["number of lines"]} at a time')
+        logging_accepted = logging_rejected = 0
         counter = 0
         for array in data.values():
             for entry in array:
                 # Loop for checking for request types
                 for request in self.configuration["requests"]:
                     if request in entry["request"]["type"]:
+                        logging_accepted += 1
                         # If for displaying only set amount of entries at a time
                         # If configured number is <= 0 display all uninterruptedly
-
                         if counter == self.configuration["number of lines"] and counter != 0:
                             counter = 0
                             # User can choose to stop displaying by typing "no"
-                            if input("Do you want to continue? [Enter / no]").upper() == "NO":
+                            logging.info("Asking user if they want to continue")
+                            response = input("Do you want to continue? [Enter / no]").upper()
+                            logging.debug(f'User inputted "{response}"')
+                            if response.upper() == "NO":
+                                logging.debug("Printing interrupted by user")
+                                logging.info("Stopping to print on user request")
+                                logging.info(f'Accepted {logging_accepted} requests, and rejected {logging_rejected}')
                                 return
                         counter += 1
                         print(entry)
+                    else:
+                        logging_rejected += 1
+        logging.debug("Printed all data successfully")
+        logging.info(f'Accepted {logging_accepted} requests, and rejected {logging_rejected}')
 
 
 def run():
