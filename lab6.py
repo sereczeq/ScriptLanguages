@@ -1,17 +1,5 @@
 import logging
 import re
-from enum import Enum
-
-
-def run():
-    reader = LogReader()
-    # reader.read_config()
-    # read_log()
-
-
-def logging_setup(level):
-    format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
-    logging.basicConfig(level=level, format=format_log)
 
 
 class LogReader:
@@ -25,10 +13,7 @@ class LogReader:
 
         self.LogFile = "lab4_log"
         self.log = []
-        self.read_config()
-        self.read_log()
-        self.parse_log()
-        self.print_from_subnet()
+        self.tuples = []
 
     def read_config(self):
         config = ""
@@ -61,11 +46,19 @@ class LogReader:
                 logging_setup(match.group("debug"))
             except:
                 logging_setup("DEBUG")
+
         match = re.search(display_regex, config)
         if match:
-            for string in ("lines", "separator", "filter"):
-                if match.group(string):
-                    self.display[string] = match.group(string)
+            for string in ("lines", "filter"):
+                group = match.group(string)
+                if group:
+                    self.display[string] = group
+            group = match.group("singleChar")
+            if group:
+                self.display["separator"] = group
+            group = match.group("quotation")
+            if group:
+                self.display["separator"] = group
 
     def read_log(self) -> [str]:
         try:
@@ -84,42 +77,76 @@ class LogReader:
                 "(?P<requestHeader>\"[A-Z]+? \/[-a-zA-Z0-9()@:%_\+.~#?&\/=]*? [A-Z]+?\/[\d.]+?\") " \
                 "(?P<httpStatusCode>\d{3}) " \
                 "(?P<sizeOfResponse>\d+?) "
-        tuples = []
         for line in self.log:
             match = re.match(regex, line)
             if match:
-                tuples.append((
+                self.tuples.append((
                     match.group("ipAddress"),
                     match.group("timeStamp"),
                     match.group("requestHeader"),
                     match.group("httpStatusCode"),
                     match.group("sizeOfResponse"),
                 ))
-        return tuples
+        return self.tuples
 
-    def print_from_subnet(self, subnet="192.168.0.0"):
+    def print_from_subnet(self, subnet="38.18.0.0"):
         mask_length = 254598 % 16 + 8
+        count = 0
+        for tup in self.tuples:
+            ip = tup[0]
+            if does_ip_belong(ip, subnet, mask_length):
+                print(tup)
+                count += 1
+                if count == int(self.display["lines"]):
+                    response = input("Do you want to continue? [Enter / NO]")
+                    if response.upper() == "NO":
+                        return
+                    else:
+                        count = 0
 
     def print_total_size(self):
-        for line in self.log:
-            
+        regex = re.compile("\"(?P<type>[A-Z]+?) ")
+        total_size = 0
+        for line in self.tuples:
+            request_type = re.match(regex, line[2]).group("type")
+            if request_type == self.display["filter"]:
+                size = int(line[-1])
+                total_size += size
+                print(request_type, size, sep=self.display["separator"])
+        print(total_size)
+
 
 def does_ip_belong(ip, subnet_ip, mask_length):
-        regex = re.compile("(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})")
-        match = re.match(regex, subnet_ip)
-        subnet_ip = ""
+    def to_bin(ip_to_convert):
+        regex = re.compile("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})")
+        match = re.match(regex, ip_to_convert)
+        ip_to_convert = ""
         for i in range(1, 5):
-            subnet_ip += bin(int(match[i]))[2:]
-        match = re.match(regex, ip)
-        ip = ""
-        for i in range(1, 5):
-            ip += bin(int(match[i]))[2:]
-        if ip[:mask_length] == subnet_ip[:mask_length] and int(ip[mask_length:],2) > int(subnet_ip[mask_length:],2):
-            print("jej")
+            ip_to_convert += bin(int(match[i]))[2:].zfill(8)
+        return ip_to_convert
+
+    subnet_ip = to_bin(subnet_ip)
+    ip = to_bin(ip)
+
+    # print(ip, ip[mask_length:], int(ip[mask_length:], 2), subnet_ip, subnet_ip[mask_length:],
+    #       int(subnet_ip[mask_length:], 2), sep="\n")
+    return ip[:mask_length] == subnet_ip[:mask_length] and int(ip[mask_length:], 2) > int(subnet_ip[mask_length:], 2)
 
 
+def run():
+    reader = LogReader()
+    reader.read_config()
+    reader.read_log()
+    reader.parse_log()
+    reader.print_from_subnet()
+    reader.print_total_size()
+
+
+def logging_setup(level):
+    format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
+    logging.basicConfig(level=level, format=format_log)
 
 
 if __name__ == "__main__":
-    does_ip_belong("192.168.12.12", "192.168.13.0", 16)
     run()
+    print(does_ip_belong("192.168.10.12", "192.168.11.14", 16))
