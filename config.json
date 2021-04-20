@@ -1,0 +1,1 @@
+{"action on bad config": "RETRY", "name of webserver log": "lab4_log", "requests": ["GET", "HEAD", "OPTIONS"], "logging level": "DEBUG", "number of lines": 0}

@@ -34,7 +34,7 @@ class ConfigReader:
             QUIT = 2
             USE_OLD = 3
 
-    _JSON_file_name = "json.txt"
+    _JSON_file_name = "config.json"
 
     def __init__(self):
         self.configuration = dict()
@@ -257,9 +257,9 @@ class LogReader:
 
 
 def run():
-    # reader = ConfigReader()
+    reader = ConfigReader()
     # configuration = reader.create_config()
-    reader = LogReader("json.txt")
+    reader = LogReader("config.json")
     reader.print_index_html()
     # reader.display(reader.data)
 
