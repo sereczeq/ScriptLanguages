@@ -22,15 +22,16 @@ class LogReader:
         # e.x. "[Config]" doesn't appear in between "name" and "LogFile"
 
         # accepts every character as a name
-        log_file_regex = re.compile("\[LogFile\]\s*name=(?P<name>.*)")
+        log_file_regex = re.compile("\\[LogFile]\\s*name=(?P<name>.*)")
         # accepts only capital letter as debug, later try catch to check if correct
-        config_regex = re.compile("\[Config\]\s*debug=(?P<debug>[A-Z]+)")
+        config_regex = re.compile("\\[Config]\\s*debug=(?P<debug>[A-Z]+)")
         # arguments can be missing,
         # lines can be a number,
         # separator can be single character or a string contained in quotation marks e.x. "c0r /n re. cT !",
         # filter can contain only capital letters
         display_regex = re.compile(
-            "\[Display\](\s|lines=(?P<lines>\d+)\s|separator=(?P<separator>(\"(?P<quotation>[\s\S]*?)\"|(?P<singleChar>.)))\s|filter=(?P<filter>[A-Z]+)\s)*")
+            "\\[Display](\\s|lines=(?P<lines>\\d+)\\s|separator=(?P<separator>(\"(?P<quotation>[\\s\\S]*?)\"|"
+            "(?P<singleChar>.)))\\s|filter=(?P<filter>[A-Z]+)\\s)*")
         with open("lab6.config") as config_file:
             for line in config_file:
                 config += line
@@ -44,7 +45,7 @@ class LogReader:
             try:
                 print(match.group("debug"))
                 logging_setup(match.group("debug"))
-            except:
+            except ValueError:
                 logging_setup("DEBUG")
 
         match = re.search(display_regex, config)
@@ -72,11 +73,11 @@ class LogReader:
 
     def parse_log(self) -> [(str, str, str, str, str)]:
         #     IP, timestamp, request header, HTTP status code, size of the response
-        regex = "(?P<ipAddress>(\d{1,3}\.){3}\d{1,3}) - - " \
-                "(?P<timeStamp>\[\d{1,2}\/[A-Z][a-z]{2}\/\d{4}(:\d{2}){3} \+\d{4}]) " \
-                "(?P<requestHeader>\"[A-Z]+? \/[-a-zA-Z0-9()@:%_\+.~#?&\/=]*? [A-Z]+?\/[\d.]+?\") " \
-                "(?P<httpStatusCode>\d{3}) " \
-                "(?P<sizeOfResponse>\d+?) "
+        regex = "(?P<ipAddress>(\\d{1,3}\\.){3}\\d{1,3}) - - " \
+                "(?P<timeStamp>\\[\\d{1,2}\\/[A-Z][a-z]{2}\\/\\d{4}(:\\d{2}){3} \\+\\d{4}]) " \
+                "(?P<requestHeader>\"[A-Z]+? \\/[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*? [A-Z]+?\\/[\\d.]+?\") " \
+                "(?P<httpStatusCode>\\d{3}) " \
+                "(?P<sizeOfResponse>\\d+?) "
         for line in self.log:
             match = re.match(regex, line)
             if match:
