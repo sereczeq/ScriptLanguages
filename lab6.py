@@ -150,3 +150,17 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+# pycodestyle output after first run:
+# D:\Kod\Python>pycodestyle lab6.py
+# lab6.py:26:80: E501 line too long (83 > 79 characters)
+# lab6.py:30:80: E501 line too long (108 > 79 characters)
+# lab6.py:33:80: E501 line too long (110 > 79 characters)
+# lab6.py:75:80: E501 line too long (83 > 79 characters)
+# lab6.py:77:80: E501 line too long (95 > 79 characters)
+# lab6.py:78:80: E501 line too long (106 > 79 characters)
+# lab6.py:132:80: E501 line too long (95 > 79 characters)
+# lab6.py:134:80: E501 line too long (117 > 79 characters)
+# lab6.py:138:80: E501 line too long (92 > 79 characters)
+
+# I'm not going to print those errors, since my IDE is setup for 120 lines.
