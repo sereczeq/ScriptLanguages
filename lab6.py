@@ -134,6 +134,11 @@ def does_ip_belong(ip, subnet_ip, mask_length):
     return ip[:mask_length] == subnet_ip[:mask_length] and int(ip[mask_length:], 2) > int(subnet_ip[mask_length:], 2)
 
 
+def logging_setup(level):
+    format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
+    logging.basicConfig(level=level, format=format_log)
+
+
 def run():
     reader = LogReader()
     reader.read_config()
@@ -143,11 +148,5 @@ def run():
     reader.print_total_size()
 
 
-def logging_setup(level):
-    format_log = "[%(filename)s:%(lineno)s - %(funcName)20s()\t%(levelname)s\t] %(message)s"
-    logging.basicConfig(level=level, format=format_log)
-
-
 if __name__ == "__main__":
     run()
-    print(does_ip_belong("192.168.10.12", "192.168.11.14", 16))
