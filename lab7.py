@@ -3,10 +3,12 @@ from datetime import datetime
 import re
 
 
+# Task 9
 class WrongHTTPRequest(Exception):
     pass
 
 
+# Task 6
 class LogEntry:
     def __init__(self, entry: str):
         regex = "(?P<ipAddress>(\\d{1,3}\\.){3}\\d{1,3}) - - " \
@@ -37,6 +39,7 @@ class LogEntry:
                f'Size of the response: {self.sizeOfResponse}\n}}'
 
 
+# Task 5
 class RequestHeader:
     def __init__(self, request: str):
         regex = "(?P<requestHeader>\"?(?P<type>[A-Z]+?) (?P<resource>\\/[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*?)\"?" \
@@ -58,19 +61,23 @@ class RequestHeader:
         return self.resource
 
 
+# Task 8
 def log_to_list_of_log_entry(name: str) -> [LogEntry]:
     list_of_entries = []
     i_logging = 1
+
     for line in read_log(name):
         try:
             list_of_entries.append(LogEntry(line))
         except WrongHTTPRequest as e:
             logging.error(f'Exception no.{i_logging}: {e}')
             i_logging += 1
+
     logging.debug(f'While reading log, found {i_logging} exceptions')
     return list_of_entries
 
 
+# Task 7
 def log_line_to_log_entry(line: str) -> LogEntry:
     return LogEntry(line)
 
@@ -87,11 +94,13 @@ def read_log(name) -> [str]:
         quit(1)
 
 
+# Task 4
 def string_to_datetime(date: str) -> datetime:
     date_format = "[%d/%b/%Y:%H:%M:%S %z]"
     return datetime.strptime(date, date_format)
 
 
+# Task 10
 def requests_in_interval(requests: [LogEntry], date1: datetime, date2: datetime):
     if date1 > date2:
         print(f'ERROR: {date1} is later than {date2}, did you mean to pass them in reversed order?')
