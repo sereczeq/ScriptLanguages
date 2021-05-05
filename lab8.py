@@ -1,5 +1,4 @@
-# https://www.kaggle.com/promptcloud/careerbuilder-job-listing-2020
-# Careerbuilder job listing
+# https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset
 import argparse
 import csv
 import sys
@@ -57,6 +56,7 @@ class NoCreativeName:
         sum = 0
         for entry in self.data:
             sum += entry.recovered
+        print(sum)
         return sum
 
     def deaths_by_date(self):
@@ -83,6 +83,7 @@ class NoCreativeName:
         all_recovered = sheet.cell(row=1, column=3)
         all_recovered.value = "All recovered people"
         all_recovered.font = f_title
+        sheet.cell(row=2, column=3).value = self.recovered_total()
         countries_number = sheet.cell(row=1, column=4)
         countries_number.value = "Total Number of Cities"
         countries_number.font = f_title
@@ -104,7 +105,7 @@ class NoCreativeName:
         workbook.save(name)
 
 def run():
-    name = "a.csv"
+    name = "abc.csv"
     NoCreativeName(name)
 
 
@@ -121,6 +122,6 @@ if __name__ == "__main__":
         sys.exit(0)
 
     no_name = NoCreativeName(file_name)
-    # if 'o' in args and args.o is not None:
-    #     name_xlsx_file = args.o
-    #     no_name.save_to_excel(name_xlsx_file)
+    if 'o' in args and args.o is not None:
+        name_xlsx_file = args.o
+        no_name.save_to_excel(name_xlsx_file)
