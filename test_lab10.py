@@ -2,8 +2,6 @@ import random
 
 import pytest
 
-import lab10
-
 
 # 1
 def test_request_string_to_object_check_argument_type():

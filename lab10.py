@@ -23,9 +23,11 @@ class Request:
         if len(arguments) != 3:
             raise WrongArgumentCount
 
-        self.type = arguments[0]
-        self.path = arguments[1]
-        self.protocol = arguments[2]
+        # Now I know how to make it work ^^
+        self.type, self.path, self.protocol = arguments
+        # self.type = arguments[0]
+        # self.path = arguments[1]
+        # self.protocol = arguments[2]
 
         # quickly copied from other lab
         if self.type not in "GET|POST|HEAD|PUT|DELETE|TRACE|OPTIONS|CONNECT|PATCH":
@@ -80,9 +82,58 @@ def request_string_to_object(request_string):
         return None
 
 
-def run():
-    request_string_to_object("a")
+import pytest
 
 
-if __name__ == "__main__":
-    run()
+# 1
+def test_request_string_to_object_check_argument_type():
+    with pytest.raises(TypeError):
+        request_string_to_object(123)
+
+
+# 2
+def test_request_init_check_return_type():
+    assert type(request_string_to_object("GET / HTTP1.1")) is Request
+
+
+# 3
+def test_request_init_check_variables():
+    request = request_string_to_object("GET / HTTP1.1")
+    assert request.type == "GET"
+    assert request.path == "/"
+    assert request.protocol == "HTTP1.1"
+
+
+# 4
+def test_request_init_check_variables_more():
+    type = "POST"
+    path = "/stupid.cat"
+    protocol = "HTTP1.0"
+    string = type + " " + path + " " + protocol
+    request = request_string_to_object(string)
+    assert request.type == type
+    assert request.path == path
+    assert request.protocol == protocol
+
+
+# 5
+def test_request_init_only_two_args():
+    assert type(request_string_to_object("GET / ")) is type(None)
+
+
+# 6
+def test_request_init_wrong_type():
+    with pytest.raises(BadRequestError):
+        request_string_to_object("DOWNLOAD /movie.mp4 HTTP1.1")
+
+
+# 7
+def test_request_init_wrong_http():
+    with pytest.raises(BadHTTPVersion):
+        request_string_to_object("GET /movie.mp4 HTTP1.2")
+
+
+# 8
+def test_request_init_wrong_path():
+    with pytest.raises(ValueError):
+        request_string_to_object("GET movie.mp4 HTTP1.1")
